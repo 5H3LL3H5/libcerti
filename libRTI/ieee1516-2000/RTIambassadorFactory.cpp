@@ -207,11 +207,19 @@ public:
 	    throw rti1516::RTIinternalError(msg.str());
 	}
 
-	privateRefs->handle_RTIA = pi.hProcess;
 
+	privateRefs->handle_RTIA = pi.hProcess;
+//TODO : Refactor in a templated close_ressources
 #if !defined(RTIA_USE_TCP)
 	closesocket(descriptor);
 	closesocket(newPipeFd);
+#endif
+
+#if defined(RTIA_USE_TCP)
+	if (privateRefs->socketUn->acceptUN(10*1000) == -1) {
+	    TerminateProcess(privateRefs->handle_RTIA, 0);
+	    throw rti1516::RTIinternalError( wstringize() << "Cannot connect to RTIA" );
+        }  
 #endif
     }
 };
@@ -274,16 +282,26 @@ template <bool use_tcp> void doSomething(int descriptor){
 	    << std::endl
 	    << "Maybe RTIA is not in search PATH environment.";
         throw rti1516::RTIinternalError(msg.str().c_str());
-        break;
+        break; // <- was not in the code before. Bug or not ?
+	//because we never reach the default, because we aret throwing.
         }
     default: // father process (Federe).
         // unbock the above blocked signals
         sigprocmask(SIG_SETMASK, &oset, NULL);
+        break ;
+    } //end fork/switch
+
+//if we end up there, it was because we were in case case default : (father).
+//factoruse with a release function
 #if !defined(RTIA_USE_TCP)
         close(descriptor);
 #endif
-        break ;
-    } //end fork
+#if defined(RTIA_USE_TCP)
+            if (privateRefs->socketUn->acceptUN(10*1000) == -1) {
+                      kill(privateRefs->pid_RTIA, SIGINT );
+                throw rti1516::RTIinternalError( wstringize() << "Cannot connect to RTIA" );
+            }
+#endif
 }//end do something
 
 };

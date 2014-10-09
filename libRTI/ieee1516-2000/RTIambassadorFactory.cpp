@@ -24,6 +24,7 @@
 #include <RTI/RTIambassadorFactory.h>
 #include <memory>
 #include <iostream>
+#include <sstream>
 #include <cstdlib>
 #include <cerrno>
 #include <cstring>
@@ -44,129 +45,192 @@ rti1516::RTIambassadorFactory::RTIambassadorFactory()
 }
 
 rti1516::RTIambassadorFactory::~RTIambassadorFactory()
-throw ()
+    throw ()
 {
 }
 
 namespace {
-static PrettyDebug D1516("LIBRTI1516", __FILE__);
-static PrettyDebug G1516("GENDOC1516",__FILE__) ;
+    static PrettyDebug D1516("LIBRTI1516", __FILE__);
+    static PrettyDebug G1516("GENDOC1516",__FILE__) ;
+
+    struct Nix{};
+    struct Win{};
+    
+#ifdef RTIA_USE_TCP
+const bool USE_TCP = true;
+#else
+const bool USE_TCP = false;
+#endif
 }
 
-std::auto_ptr< rti1516::RTIambassador >
-rti1516::RTIambassadorFactory::createRTIambassador(std::vector< std::wstring > & args)
-throw (BadInitializationParameter,
-        RTIinternalError)
-        {
-    certi::RTI1516ambassador* p_ambassador(new certi::RTI1516ambassador());
+using namespace rti1516;
 
-    std::auto_ptr< rti1516::RTIambassador > ap_ambassador(p_ambassador);
+struct HelperRealFactory{
+        static certi::RTI1516ambPrivateRefs* get_privateRefs(certi::RTI1516ambassador* p){
+                return p->privateRefs;
+        }
+};
 
-    G1516.Out(pdGendoc,"enter RTIambassador::RTIambassador");
-    PrettyDebug::setFederateName( "LibRTI::UnjoinedFederate" );
-    std::wstringstream msg;
+template <class placeholder> class SysWrapper;
+template <bool use_tcp> int get_descriptor(rti1516::RTIambassador* p_ambassador){return -1;}
 
-    p_ambassador->privateRefs = new RTI1516ambPrivateRefs();
+template <class SystemType, bool use_tcp> struct RealFactory{
 
-    p_ambassador->privateRefs->socketUn = new SocketUN(stIgnoreSignal);
+    rti1516::RTIambassador* p_ambassador;
+public :
+    RealFactory(rti1516::RTIambassador* ambassador):p_ambassador(ambassador) {}
+    
+    std::auto_ptr< rti1516::RTIambassador >
+    createRTIambassador(std::vector< std::wstring > & args)
+	throw (BadInitializationParameter,
+	       certi::RTIinternalError) {
+    
+	std::auto_ptr< rti1516::RTIambassador > ap_ambassador(p_ambassador);
+    
+	int descriptor = get_descriptor<use_tcp>(p_ambassador);
+	SysWrapper<SystemType>(p_ambassador).dosomething();
+    
+	certi::M_Open_Connexion req, rep ;
+	req.setVersionMajor(CERTI_Message::versionMajor);
+	req.setVersionMinor(CERTI_Message::versionMinor);
 
-    p_ambassador->privateRefs->is_reentrant = false ;
+	G1516.Out(pdGendoc,"        ====>executeService OPEN_CONNEXION");
+	//p_ambassador->privateRefs->executeService(&req, &rep);
+        HelperRealFactory::get_privateRefs(p_ambassador)->executeService(&req, &rep);
+	G1516.Out(pdGendoc,"exit  RTIambassador::RTIambassador");
 
-    std::vector<std::string> rtiaList;
-    const char* env = getenv("CERTI_RTIA");
-    if (env && strlen(env))
-        rtiaList.push_back(std::string(env));
-    env = getenv("CERTI_HOME");
-    if (env && strlen(env))
-        rtiaList.push_back(std::string(env) + "/bin/rtia");
-    rtiaList.push_back(PACKAGE_INSTALL_PREFIX "/bin/rtia");
-    rtiaList.push_back("rtia");
+	return ap_ambassador;
+    }
+};
+//---------------------------------------------------------------
 
-#if defined(RTIA_USE_TCP)
+//---------------------------------------------------------------
+template int get_descriptor<true> (rti1516::RTIambassador* p_ambassador) {
     int port = p_ambassador->privateRefs->socketUn->listenUN();
     if (port == -1) {
         D1516.Out( pdError, "Cannot listen to RTIA connection. Abort." );
         throw rti1516::RTIinternalError(L"Cannot listen to RTIA connection" );
     }
-#else
+    return port;
+}
+template int get_descriptor<false> (rti1516::RTIambassador* p_ambassador) {
     int pipeFd = p_ambassador->privateRefs->socketUn->socketpair();
     if (pipeFd == -1) {
         D1516.Out( pdError, "Cannot get socketpair to RTIA connection. Abort." );
         throw rti1516::RTIinternalError( L"Cannot get socketpair to RTIA connection" );
     }
-#endif
+    return pipeFd;
+}
+    
+std::vector<std::string> build_rtiaList(){
+    std::vector<std::string> rtiaList;
+    const char* env = getenv("CERTI_RTIA");
+    if (env && strlen(env)) {
+	rtiaList.push_back(std::string(env));
+    }
+    env = getenv("CERTI_HOME");
+    if (env && strlen(env)) {
+	rtiaList.push_back(std::string(env) + "/bin/rtia");
+    }
+            
+    rtiaList.push_back(PACKAGE_INSTALL_PREFIX "/bin/rtia");
+    rtiaList.push_back("rtia");
+            
+    return rtiaList;
+}
+//-----------------------------------------------------------
+//Windows wrapper
+template <>  class SysWrapper<Win> {
+    template <bool use_tcp> void buildOut(stream&,wstring rtia, int port);
+    rti1516::RTIambassador* p_ambassador;
+public: 
+    SysWrapper(rti1516::RTIambassador* ambassador):p_ambassador(ambassador) {}
+    template <bool use_tcp> doSomething(p_ambassador, rtiaList){
+	STARTUPINFO si;
+	PROCESS_INFORMATION pi;
 
-#ifdef _WIN32
-    STARTUPINFO si;
-    PROCESS_INFORMATION pi;
-
-    ZeroMemory( &si, sizeof(si) );
-    si.cb = sizeof(si);
-    ZeroMemory( &pi, sizeof(pi) );
+	ZeroMemory( &si, sizeof(si) );
+	si.cb = sizeof(si);
+	ZeroMemory( &pi, sizeof(pi) );
 
 #ifndef RTIA_CONSOLE_SHOW
-    /*
-     * Avoid displaying console window
-     * when running RTIA.
-     */
-    si.dwFlags = STARTF_USESHOWWINDOW;
-    si.wShowWindow = SW_HIDE;
+	/*
+	 * Avoid displaying console window
+	 * when running RTIA.
+	 */
+	si.dwFlags = STARTF_USESHOWWINDOW;
+	si.wShowWindow = SW_HIDE;
 #endif
 
 #if !defined(RTIA_USE_TCP)
-    SOCKET newPipeFd;
-    if (!DuplicateHandle(GetCurrentProcess(),
-            (HANDLE)pipeFd,
-            GetCurrentProcess(),
-            (HANDLE*)&newPipeFd,
-            0,
-            TRUE, // Inheritable
-            DUPLICATE_SAME_ACCESS)) {
-        D1516.Out( pdError, "Cannot duplicate socket for RTIA connection. Abort." );
-        throw rti1516::RTIinternalError( L"Cannot duplicate socket for RTIA connection. Abort." );
-    }
+	SOCKET newPipeFd;
+	if (!DuplicateHandle(GetCurrentProcess(),
+			     (HANDLE)pipeFd,
+			     GetCurrentProcess(),
+			     (HANDLE*)&newPipeFd,
+			     0,
+			     TRUE, // Inheritable
+			     DUPLICATE_SAME_ACCESS)) {
+	    D1516.Out( pdError, "Cannot duplicate socket for RTIA connection. Abort." );
+	    throw rti1516::RTIinternalError( L"Cannot duplicate socket for RTIA connection. Abort." );
+	}
 #endif
 
-    bool success = false;
-    for (unsigned i = 0; i < rtiaList.size(); ++i) {
-        std::stringstream stream;
-#if defined(RTIA_USE_TCP)
-        stream << rtiaList[i] << ".exe -p " << port;
-#else
-        stream << rtiaList[i] << ".exe -f " << newPipeFd;
-#endif
+	bool success = false;
+	for (unsigned i = 0; i < rtiaList.size(); ++i) {
+	    std::stringstream stream;
+               
+	    build<use_tcp>(stream, rtiaList[i], descriptor):
+                
+                // Start the child process.
+                if (CreateProcess( NULL, // No module name (use command line).
+				   (char*)stream.str().c_str(),	// Command line.
+				   NULL,					// Process handle not inheritable.
+				   NULL,					// Thread handle not inheritable.
+				   TRUE,					// Set handle inheritance to TRUE.
+				   0,   					// No creation flags.
+				   NULL,					// Use parent's environment block.
+				   NULL,					// Use parent's starting directory.
+				   &si,					// Pointer to STARTUPINFO structure.
+				   &pi ))					// Pointer to PROCESS_INFORMATION structure.
+                {
+                    success = true;
+                    break;
+                }
+	}
+	if (!success) {
+	    msg << "CreateProcess - GetLastError()=<"
+		<< GetLastError() <<"> "
+		<< "Cannot connect to RTIA.exe";
+	    throw rti1516::RTIinternalError(msg.str());
+	}
 
-        // Start the child process.
-        if (CreateProcess( NULL, // No module name (use command line).
-                (char*)stream.str().c_str(),	// Command line.
-                NULL,					// Process handle not inheritable.
-                NULL,					// Thread handle not inheritable.
-                TRUE,					// Set handle inheritance to TRUE.
-                0,   					// No creation flags.
-                NULL,					// Use parent's environment block.
-                NULL,					// Use parent's starting directory.
-                &si,					// Pointer to STARTUPINFO structure.
-                &pi ))					// Pointer to PROCESS_INFORMATION structure.
-        {
-            success = true;
-            break;
-        }
-    }
-    if (!success) {
-        msg << "CreateProcess - GetLastError()=<"
-                << GetLastError() <<"> "
-                << "Cannot connect to RTIA.exe";
-        throw rti1516::RTIinternalError(msg.str());
-    }
-
-    p_ambassador->privateRefs->handle_RTIA = pi.hProcess;
+	p_ambassador->privateRefs->handle_RTIA = pi.hProcess;
 
 #if !defined(RTIA_USE_TCP)
-    closesocket(pipeFd);
-    closesocket(newPipeFd);
+	closesocket(pipeFd);
+	closesocket(newPipeFd);
 #endif
+    }
+};
 
-#else
+template <> void SysWrapper<Win>::buildOut<true>(stream&,wstring rtia, newPipeFd){
+    stream << rtia << ".exe -p " << port;
+}
+template <> void SysWrapper<Win>::buildOut<false>(stream&,wstring rtia, newPipeFd){
+    stream << rtia << ".exe -f " << newPipeFd;
+}
+//----------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------
+template <> class SysWrapper<Nix> {
+    template <bool use_tcp> closeAllFd(int descriptor);
+    template <bool use_tcp> void execute(wstringstream& stream,int descriptor);
+}
+    rti1516::RTIambassador* p_ambassador;
+public: 
+SysWrapper(rti1516::RTIambassador* ambassador):p_ambassador(ambassador) {}
+template <bool use_tcp> void doSomething(descriptor){
 
     sigset_t nset, oset;
     // temporarily block termination signals
@@ -187,31 +251,19 @@ throw (BadInitializationParameter,
         break ;
 
     case 0: // child process (RTIA).
-        // close all open filedescriptors except the pipe one
-        for (int fdmax = sysconf(_SC_OPEN_MAX), fd = 3; fd < fdmax; ++fd) {
-#if !defined(RTIA_USE_TCP)
-            if (fd == pipeFd)
-                continue;
-#endif
-            close(fd);
-        }
+        closeAllFd<use_tcp>(descriptor);
         for (unsigned i = 0; i < rtiaList.size(); ++i)
         {
-            std::stringstream stream;
-#if defined(RTIA_USE_TCP)
-            stream << port;
-            execlp(rtiaList[i].c_str(), rtiaList[i].c_str(), "-p", stream.str().c_str(), NULL);
-#else
-            stream << pipeFd;
-            execlp(rtiaList[i].c_str(), rtiaList[i].c_str(), "-f", stream.str().c_str(), NULL);
-#endif
+	    std::stringstream stream;
+	    execute<use_tcp>(stream,descriptor);
         }
+        
         // unbock the above blocked signals
         sigprocmask(SIG_SETMASK, &oset, NULL);
         msg << "Could not launch RTIA process (execlp): "
-                << strerror(errno)
-                << std::endl
-                << "Maybe RTIA is not in search PATH environment.";
+	    << strerror(errno)
+	    << std::endl
+	    << "Maybe RTIA is not in search PATH environment.";
         throw rti1516::RTIinternalError(msg.str().c_str());
 
     default: // father process (Federe).
@@ -221,30 +273,66 @@ throw (BadInitializationParameter,
         close(pipeFd);
 #endif
         break ;
-    }
-#endif
+    } //end fork
+}//end do something
 
-#if defined(RTIA_USE_TCP)
-    if (p_ambassador->privateRefs->socketUn->acceptUN(10*1000) == -1) {
-#ifdef _WIN32
-        TerminateProcess(p_ambassador->privateRefs->handle_RTIA, 0);
-#else
-        kill(p_ambassador->privateRefs->pid_RTIA, SIGINT );
-#endif
-        throw rti1516::RTIinternalError( wstringize() << "Cannot connect to RTIA" );
-    }
-#endif
+};
 
-    certi::M_Open_Connexion req, rep ;
-    req.setVersionMajor(CERTI_Message::versionMajor);
-    req.setVersionMinor(CERTI_Message::versionMinor);
+    
+template <> SysWrapper<Nix>::closeAllFd<true>(int descriptor);
+{
+    // close all open filedescriptors except the pipe one
+    for (int fdmax = sysconf(_SC_OPEN_MAX), fd = 3; fd < fdmax; ++fd) {
+	if (fd == descriptor) {
+	    continue;
+	}
+        close(fd);
+    }       
+}
+template <> SysWrapper<Nix>::closeAllFd<false>(int );
+{
+    // close all open filedescriptors except the pipe one
+    for (int fdmax = sysconf(_SC_OPEN_MAX), fd = 3; fd < fdmax; ++fd) {
+        close(fd);
+    }       
+}
+    
+template <> void SysWrapper<Nix>::execute<true>(wstringstream& stream,int descriptor);
+{
+    stream << port;
+    execlp(rtiaList[i].c_str(), rtiaList[i].c_str(), "-p", stream.str().c_str(), NULL);
+}
 
-    G1516.Out(pdGendoc,"        ====>executeService OPEN_CONNEXION");
-    p_ambassador->privateRefs->executeService(&req, &rep);
+template <> void SysWrapper<Nix>::execute<false>(wstringstream& stream,int descriptor);
+{
+    stream << pipeFd;
+    execlp(rtiaList[i].c_str(), rtiaList[i].c_str(), "-f", stream.str().c_str(), NULL);
+}
+//-----------------------------------------------------------------------------
+std::auto_ptr< rti1516::RTIambassador >
+rti1516::RTIambassadorFactory::createRTIambassador(std::vector< std::wstring > & args)
+    throw (BadInitializationParameter,
+	   RTIinternalError)
+{
+    
+    rti1516::RTIambassador* p_ambassador = new certi::RTI1516ambassador(); 	       
 
-    G1516.Out(pdGendoc,"exit  RTIambassador::RTIambassador");
+    G1516.Out(pdGendoc,"enter RTIambassador::RTIambassador");
+    PrettyDebug::setFederateName( "LibRTI::UnjoinedFederate" );
+    std::wstringstream msg;
 
-    return ap_ambassador;
-        }
+    p_ambassador->privateRefs = new RTI1516ambPrivateRefs();
+    p_ambassador->privateRefs->socketUn = new SocketUN(stIgnoreSignal);
+    p_ambassador->privateRefs->is_reentrant = false ;
+
+    std::vector<std::string> rtiaList = build_rtiaList();
+
+#ifdef WIN32
+    return RealFactory<Win,USE_TCP>(p_ambassador).createRTIambassador(args);
+#else 
+    return RealFactory<Nix,USE_TCP>(p_ambassador).createRTIambassador(args);
+#endif       
+
+}
 
 //} // end namespace rti1516

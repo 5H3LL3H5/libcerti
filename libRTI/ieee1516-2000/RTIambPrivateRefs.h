@@ -27,12 +27,11 @@
 #include "RootObject.hh"
 #include "MessageBuffer.hh"
 
-namespace certi {
-
+using namespace certi;
 class RTI1516ambPrivateRefs
 {
 public:
-	RTI1516ambPrivateRefs();
+     RTI1516ambPrivateRefs();
     ~RTI1516ambPrivateRefs();
 
     void processException(Message *);
@@ -58,5 +57,5 @@ public:
     SocketUN *socketUn ;
     MessageBuffer msgBufSend,msgBufReceive ;
 };
-}
+
 // $Id: RTIambPrivateRefs.h,v 1.1 2014/03/03 16:41:48 erk Exp $

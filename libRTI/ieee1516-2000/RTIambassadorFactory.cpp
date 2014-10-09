@@ -66,7 +66,7 @@ const bool USE_TCP = false;
 using certi::wstringize;
 
 template <class placeholder> class SysWrapper;
-template <bool use_tcp> int get_descriptor( RTI1516ambPrivateRefs* privateRefs){return -1;}
+template <bool use_tcp> int get_descriptor( RTI1516ambPrivateRefs* privateRefs){exit(-1);return -1;}
 
 template <class SystemType, bool use_tcp> struct RealFactory{
 
@@ -288,7 +288,7 @@ template <bool use_tcp> void doSomething(int descriptor){
 
 };
 
-template <> void SysWrapper<Nix>::closeAllFd<true>(int descriptor)
+template <> void SysWrapper<Nix>::closeAllFd<false>(int descriptor)
 {
     // close all open filedescriptors except the pipe one
     for (int fdmax = sysconf(_SC_OPEN_MAX), fd = 3; fd < fdmax; ++fd) {
@@ -298,7 +298,7 @@ template <> void SysWrapper<Nix>::closeAllFd<true>(int descriptor)
         close(fd);
     }       
 }
-template <> void SysWrapper<Nix>::closeAllFd<false>(int )
+template <> void SysWrapper<Nix>::closeAllFd<true>(int )
 {
     // close all open filedescriptors except the pipe one
     for (int fdmax = sysconf(_SC_OPEN_MAX), fd = 3; fd < fdmax; ++fd) {
@@ -339,6 +339,7 @@ throw (rti1516::BadInitializationParameter,
 #ifdef WIN32
     return RealFactory<Win,USE_TCP>(p_ambassador,rtiaList,p_ambassador->privateRefs).createRTIambassador(args);
 #else 
+    std::cout<<USE_TCP<<std::endl;
     return RealFactory<Nix,USE_TCP>(p_ambassador,rtiaList,p_ambassador->privateRefs).createRTIambassador(args);
 #endif       
 

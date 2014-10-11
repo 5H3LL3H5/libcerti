@@ -29,16 +29,19 @@
 #include <RTI/RTIambassadorFactory.h>
 #include "RTIambassadorImplementation.h"
 #include "RTIambPrivateRefs.h"
+#include "RTIRealFactory.h"
 
 namespace certi
 {
 
 class RTI_EXPORT RTI1516ambassador : rti1516::RTIambassador
 {
-    friend std::auto_ptr< rti1516::RTIambassador >
+   /* friend std::auto_ptr< rti1516::RTIambassador >
     rti1516::RTIambassadorFactory::createRTIambassador(std::vector< std::wstring > & args)
     throw (rti1516::BadInitializationParameter, rti1516::RTIinternalError);
-
+   */
+    template <class SystemType, bool use_tcp> friend struct RealFactory;
+    template <class placeholder> friend class SysWrapper;
 private:
     RTI1516ambPrivateRefs* privateRefs ;
 

@@ -54,6 +54,7 @@ namespace {
   static PrettyDebug D1516("LIBRTI1516", __FILE__);
   static PrettyDebug G1516("GENDOC1516",__FILE__) ;
 
+  //placeholders for template specialisation
   struct Nix{};
   struct Win{};
     
@@ -62,8 +63,8 @@ namespace {
 #else
   const bool USE_TCP = false;
 #endif
-  template <class placeholder> class SysWrapper;
-  template <bool use_tcp> int get_descriptor( RTI1516ambPrivateRefs* privateRefs){exit(-1);return -1;}
+
+template <bool use_tcp> int get_descriptor( RTI1516ambPrivateRefs* privateRefs);
 //---------------------------------------------------------------
 template <> int get_descriptor<true> ( RTI1516ambPrivateRefs* privateRefs) {
     int port = privateRefs->socketUn->listenUN();
@@ -98,39 +99,46 @@ std::vector<std::string> build_rtiaList(){
             
     return rtiaList;
 }
+} //end anonymous namespace
 
-template <class SystemType, bool use_tcp> struct RealFactory{
-
-    rti1516::RTIambassador* p_ambassador;
-    const std::vector<std::string>& rtiaList;
-    RTI1516ambPrivateRefs* privateRefs;
-public :
-    RealFactory(rti1516::RTIambassador* ambassador,const std::vector<std::string>& rtia,RTI1516ambPrivateRefs* privateR):
-        p_ambassador(ambassador),rtiaList(rtia),privateRefs(privateR) {}
+namespace certi {
+    //template are usually in the header file. But since we only use it once
+    //it is fine
+    template <class SystemType, bool use_tcp> struct RealFactory{
+    public :
     
-    std::auto_ptr< rti1516::RTIambassador >
-    createRTIambassador(std::vector< std::wstring > & args)
-	throw (rti1516::BadInitializationParameter,
-	       certi::RTIinternalError) {
-    
-	std::auto_ptr< rti1516::RTIambassador > ap_ambassador(p_ambassador);
-    
-	int descriptor = get_descriptor<use_tcp>(privateRefs);
-	SysWrapper<SystemType>(p_ambassador,rtiaList,privateRefs).template doSomething<use_tcp>(descriptor);
-    
-	certi::M_Open_Connexion req, rep ;
-	req.setVersionMajor(certi::CERTI_Message::versionMajor);
-	req.setVersionMinor(certi::CERTI_Message::versionMinor);
+	std::auto_ptr< rti1516::RTIambassador >
+	createRTIambassador(std::vector< std::wstring > & args)
+	    throw (rti1516::BadInitializationParameter,
+		   certi::RTIinternalError) {
 
-	G1516.Out(pdGendoc,"        ====>executeService OPEN_CONNEXION");
-	privateRefs->executeService(&req, &rep);
-	G1516.Out(pdGendoc,"exit  RTIambassador::RTIambassador");
+	    G1516.Out(pdGendoc,"enter RTIambassador::RTIambassador");
+	    PrettyDebug::setFederateName( "LibRTI::UnjoinedFederate" );
+	    certi::RTI1516ambassador* p_ambassador(new certi::RTI1516ambassador());	    	    std::auto_ptr< rti1516::RTIambassador > ap_ambassador(p_ambassador);
+	    
+	    p_ambassador->privateRefs = new RTI1516ambPrivateRefs();
+	    p_ambassador->privateRefs->socketUn = new SocketUN(stIgnoreSignal);
+	    p_ambassador->privateRefs->is_reentrant = false ;
+	    
+	    std::vector<std::string> rtiaList = build_rtiaList();
 
-	return ap_ambassador;
-    }
-};
-//---------------------------------------------------------------
+    
+	    int descriptor = get_descriptor<use_tcp>(p_ambassador->privateRefs);
 
+	    //delegate system specific stuff to another class
+	    SysWrapper<SystemType>(p_ambassador,rtiaList).template doSomething<use_tcp>(descriptor);
+    
+	    certi::M_Open_Connexion req, rep ;
+	    req.setVersionMajor(certi::CERTI_Message::versionMajor);
+	    req.setVersionMinor(certi::CERTI_Message::versionMinor);
+
+	    G1516.Out(pdGendoc,"        ====>executeService OPEN_CONNEXION");
+	    p_ambassador->privateRefs->executeService(&req, &rep);
+	    G1516.Out(pdGendoc,"exit  RTIambassador::RTIambassador");
+
+	    return ap_ambassador;
+	}
+    };
 
 //-----------------------------------------------------------
 #ifdef WIN32
@@ -139,9 +147,8 @@ template <>  class SysWrapper<Win> {
   template <bool use_tcp> void buildOut(std::wstringstream stream&,std::wstring rtia, int port);
   template <bool use_tcp> void killPotentialSubProgram();
 
-  rti1516::RTIambassador* p_ambassador;
+  certi::RTI1516ambassador* p_ambassador;
   const std::vector<std::string>& rtiaList;
-  RTI1516ambPrivateRefs* privateRefs;
 
   class RaiiForSocket{
     SOCKET s;
@@ -150,8 +157,8 @@ template <>  class SysWrapper<Win> {
     ~RaiiForSocket(){closesocket(s);}
   };
 public: 
-  SysWrapper(rti1516::RTIambassador* ambassado,const std::vector<std::string>& rtiaList,RTI1516ambPrivateRefs* privateR):
-    p_ambassador(ambassador),rtiaList(rtiaList),privateRefs(privateR) {}
+  SysWrapper(certi::RTI1516ambassador* ambassado,const std::vector<std::string>& rtiaList):
+    p_ambassador(ambassador),rtiaList(rtiaList) {}
     
   template <bool use_tcp> doSomething(int descriptor){
     STARTUPINFO si;
@@ -216,14 +223,13 @@ public:
       throw rti1516::RTIinternalError(msg.str());
     }
 
-
-    privateRefs->handle_RTIA = pi.hProcess;
+    p_ambassador->privateRefs->handle_RTIA = pi.hProcess;
     killPotentialSubProgram<use_tcp>();
   }
 };
 
 template <> void SysWrapper<Win>::killPotentialSubProgram<true>(){
-  if (privateRefs->socketUn->acceptUN(10*1000) == -1) {
+  if (p_ambassador->privateRefs->socketUn->acceptUN(10*1000) == -1) {
     TerminateProcess(privateRefs->handle_RTIA, 0);
     throw rti1516::RTIinternalError( wstringize() << "Cannot connect to RTIA" );
   }  
@@ -245,15 +251,12 @@ template <> class SysWrapper<Nix> {
     template <bool use_tcp> void execute(const std::string& prog,std::stringstream& stream,int descriptor);
     template <bool use_tcp> void releaseRessource(int descriptor);
 
-    rti1516::RTIambassador* p_ambassador;
+    certi::RTI1516ambassador* p_ambassador;
     const std::vector<std::string>& rtiaList;
-    RTI1516ambPrivateRefs* privateRefs;
-
 public: 
-        SysWrapper(rti1516::RTIambassador* ambassador, 
-        const std::vector<std::string>& rtia,
-        RTI1516ambPrivateRefs* privateR):
-                p_ambassador(ambassador),rtiaList(rtia),privateRefs(privateR) {}
+        SysWrapper(certi::RTI1516ambassador* ambassador, 
+        const std::vector<std::string>& rtia):
+                p_ambassador(ambassador),rtiaList(rtia){}
 template <bool use_tcp> void doSomething(int descriptor){
 
     sigset_t nset, oset;
@@ -263,7 +266,7 @@ template <bool use_tcp> void doSomething(int descriptor){
     sigaddset(&nset, SIGINT);
     sigprocmask(SIG_BLOCK, &nset, &oset);
 
-    switch((privateRefs->pid_RTIA = fork())) {
+    switch((p_ambassador->privateRefs->pid_RTIA = fork())) {
     case -1: // fork failed.
         perror("fork");
         // unbock the above blocked signals
@@ -275,7 +278,8 @@ template <bool use_tcp> void doSomething(int descriptor){
         throw rti1516::RTIinternalError(wstringize() << "fork failed in RTIambassador constructor");
         break ;
 
-    case 0: {// child process (RTIA).
+    case 0: {
+        // child process (RTIA).
         closeAllFd<use_tcp>(descriptor);
         for (unsigned i = 0; i < rtiaList.size(); ++i)
         {
@@ -292,7 +296,7 @@ template <bool use_tcp> void doSomething(int descriptor){
 	    << "Maybe RTIA is not in search PATH environment.";
         throw rti1516::RTIinternalError(msg.str().c_str());
         break; // <- was not in the code before. Bug or not ?
-	//because we never reach the default, because we aret throwing.
+	//because we never reach the default, because we are throwing.
         }
     default: // father process (Federe).
         // unbock the above blocked signals
@@ -300,7 +304,7 @@ template <bool use_tcp> void doSomething(int descriptor){
         break ;
     } //end fork/switch
 
-    //if we end up there, it was because we were in case case default : (father).
+    //if we end up there, it was because we were in case case default
     releaseRessource<use_tcp>(descriptor);
     
 }//end do something
@@ -311,8 +315,8 @@ template <> void SysWrapper<Nix>::releaseRessource<false>(int descriptor){
   close(descriptor);
 }
 template <> void SysWrapper<Nix>::releaseRessource<true>(int){
-  if (privateRefs->socketUn->acceptUN(10*1000) == -1) {
-    kill(privateRefs->pid_RTIA, SIGINT );
+  if (p_ambassador->privateRefs->socketUn->acceptUN(10*1000) == -1) {
+    kill(p_ambassador->privateRefs->pid_RTIA, SIGINT );
     throw rti1516::RTIinternalError( wstringize() << "Cannot connect to RTIA" );
   }
 }
@@ -347,32 +351,17 @@ template <> void SysWrapper<Nix>::execute<false>(const std::string& prog,std::st
     execlp( prog.c_str(),prog.c_str(), "-f", stream.str().c_str(), NULL);
 }
 #endif 
-}
+} //end of namespace certi
+
 //-----------------------------------------------------------------------------
 std::auto_ptr< rti1516::RTIambassador >
 rti1516::RTIambassadorFactory::createRTIambassador(std::vector< std::wstring > & args)
 throw (rti1516::BadInitializationParameter,
         rti1516::RTIinternalError)
 {
-    
-    certi::RTI1516ambassador* p_ambassador(new certi::RTI1516ambassador());	       
-
-    G1516.Out(pdGendoc,"enter RTIambassador::RTIambassador");
-    PrettyDebug::setFederateName( "LibRTI::UnjoinedFederate" );
-
-    p_ambassador->privateRefs = new RTI1516ambPrivateRefs();
-    p_ambassador->privateRefs->socketUn = new SocketUN(stIgnoreSignal);
-    p_ambassador->privateRefs->is_reentrant = false ;
-
-    std::vector<std::string> rtiaList = build_rtiaList();
-
 #ifdef WIN32
-    return RealFactory<Win,USE_TCP>(p_ambassador,rtiaList,p_ambassador->privateRefs).createRTIambassador(args);
+    return RealFactory<Win,USE_TCP>().createRTIambassador(args);
 #else 
-    std::cout<<USE_TCP<<std::endl;
-    return RealFactory<Nix,USE_TCP>(p_ambassador,rtiaList,p_ambassador->privateRefs).createRTIambassador(args);
+    return RealFactory<Nix,USE_TCP>().createRTIambassador(args);
 #endif       
-
 }
-
-//} // end namespace rti1516

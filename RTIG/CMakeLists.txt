@@ -38,11 +38,14 @@ set(rtig_SRCS
   ${rtig_SRCS_generated}
   )
 
-add_executable(rtig ${rtig_SRCS})
-target_link_libraries(rtig CERTI)
+#If we are not compiling for RTEMS, then compile RTIG
+if(NOT ${CMAKE_SYSTEM_NAME} MATCHES ".*rtems.*")
+        add_executable(rtig ${rtig_SRCS})
+        target_link_libraries(rtig CERTI)
 
-install(TARGETS rtig
-    EXPORT CERTIDepends
-    RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib)
+        install(TARGETS rtig
+            EXPORT CERTIDepends
+            RUNTIME DESTINATION bin
+            LIBRARY DESTINATION lib
+            ARCHIVE DESTINATION lib)
+endif()

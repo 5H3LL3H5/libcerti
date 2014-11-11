@@ -178,11 +178,11 @@ AttributeHandleSetImp::AttributeHandleSetImp(RTI::ULong size)
 {
     _set.reserve(size);
 }
-
+/*
 AttributeHandleSetImp::AttributeHandleSetImp(const std::vector<RTI::AttributeHandle> &val)
     : _set(val)
 {
-}
+} */
 
 AttributeHandleSetImp::AttributeHandleSetImp(const std::vector<certi::AttributeHandle> &val)
 {

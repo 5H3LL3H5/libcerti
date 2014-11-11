@@ -108,18 +108,21 @@ if (WIN32)
     SET(CERTI_SOCKET_SHM_SRC
         SocketSHM.cc SocketSHM.hh
         SocketSHMWin32.cc SocketSHMWin32.hh
-	    RingBuffer.cc RingBuffer.hh)
+	RingBuffer.cc RingBuffer.hh
+	)
 
     LIST(APPEND CERTI_SOCKET_SRCS ${CERTI_SOCKET_SHM_SRC})
 else(WIN32)    
     ADD_DEFINITIONS(-DDEBUG)
-
-    SET(CERTI_SOCKET_SHM_SRC
-        SocketSHM.cc SocketSHM.hh
-        SocketSHMPosix.cc SocketSHMPosix.hh
-        SocketSHMSysV.cc SocketSHMSysV.hh
-	    RingBuffer.cc RingBuffer.hh
-        )
+       message("Cross compiling = ${CMAKE_CROSSCOMPILING} @@@")
+       if(NOT CMAKE_CROSSCOMPILING)
+           SET(CERTI_SOCKET_SHM_SRC
+                SocketSHM.cc SocketSHM.hh
+                SocketSHMPosix.cc SocketSHMPosix.hh
+                SocketSHMSysV.cc SocketSHMSysV.hh
+	        RingBuffer.cc RingBuffer.hh
+                )
+        endif()
 
     LIST(APPEND CERTI_SOCKET_SRCS ${CERTI_SOCKET_SHM_SRC})
 endif(WIN32)

@@ -36,6 +36,11 @@
 #include <iostream>
 #include <cstdlib>
 
+#include <sys/select.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <unistd.h>
+
 using std::ifstream ;
 using std::ios ;
 using std::cout ;

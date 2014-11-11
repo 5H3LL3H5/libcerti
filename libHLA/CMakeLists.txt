@@ -87,12 +87,21 @@ IF (WIN32)
    LIST(APPEND LIBHLA_IPC_SRCS SemaphoreWin32.cc)
    LIST(APPEND LIBHLA_EXPORTED_INCLUDES SHMWin32.hh SemaphoreWin32.hh)
 ELSE (WIN32)
+if(NOT CMAKE_CROSSCOMPILING)
    LIST(APPEND LIBHLA_IPC_SRCS
         SHMPosix.cc SHMSysV.cc
-        SemaphorePosix.cc SemaphoreSysV.cc)
+         SemaphoreSysV.cc)
    LIST(APPEND LIBHLA_EXPORTED_INCLUDES
        SHMPosix.hh SHMSysV.hh
-       SemaphorePosix.hh SemaphoreSysV.hh)
+       SemaphoreSysV.hh)
+endif() 
+   LIST(APPEND LIBHLA_IPC_SRCS
+        SemaphorePosix.cc
+        )
+        
+   LIST(APPEND LIBHLA_EXPORTED_INCLUDES
+       SemaphorePosix.hh 
+       )
 ENDIF (WIN32)
 
 SOURCE_GROUP("Source Files\\IPC" FILES ${LIBHLA_IPC_SRCS})

@@ -24,7 +24,10 @@
 # include "SocketTCP.hh"
 #else
 # include <arpa/inet.h>
-# include <unistd.h>
+#include <unistd.h>
+#include <sys/select.h>
+#include <sys/time.h>
+#include <sys/types.h>
 #endif
 
 #include <cassert>

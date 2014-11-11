@@ -119,7 +119,7 @@ class RTI_EXPORT AttributeHandleSetImp : public RTI::AttributeHandleSet
 {
 public:
     AttributeHandleSetImp(RTI::ULong);
-    AttributeHandleSetImp(const std::vector<RTI::AttributeHandle> &val);
+    //AttributeHandleSetImp(const std::vector<RTI::AttributeHandle> &val);
     AttributeHandleSetImp(const std::vector<certi::AttributeHandle> &val);
 
     virtual ~AttributeHandleSetImp();

@@ -164,7 +164,8 @@ PrettyDebug::Out(pdDebugLevel level, const char *format, ...)
 
         va_list argptr;
         va_start(argptr, format);
-        vsnprintf(buffer, sizeof(buffer), format, argptr);
+        //vsnprintf(buffer, sizeof(buffer), format, argptr);
+        //vsnprintf(buffer, sizeof(buffer), format, argptr);
         va_end(argptr);
 
         *stream << buffer << '\n';

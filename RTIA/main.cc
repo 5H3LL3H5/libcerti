@@ -40,7 +40,7 @@ void SignalHandler(int signal) {
     printf("\nRTIA: Received signal %d. Exiting peacefully.\n", signal);
     normal_end = 1;
     // Catch signal again.
-    std::signal(signal, SignalHandler);
+    //std::signal(signal,&SignalHandler);
 }
 
 // ----------------------------------------------------------------------------
@@ -70,9 +70,9 @@ void NewHandler() {
  */
 int
 main(int argc, char **argv) {
-	signal(SIGINT, SignalHandler);
+	//signal(SIGINT, SignalHandler);
 #ifndef _WIN32
-	signal(SIGPIPE, SignalHandler);
+	//signal(SIGPIPE, SignalHandler);
 #endif
 
 	set_new_handler(NewHandler);

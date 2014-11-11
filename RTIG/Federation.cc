@@ -24,6 +24,7 @@
 #include "Federation.hh"
 #include "NM_Classes.hh"
 #include <cstring>
+#include <strings.h>
 #include <cerrno>
 #include <memory>
 #include <sys/stat.h>

@@ -28,6 +28,10 @@
 #include <string>
 #include <iostream>
 
+#ifdef RTEMS
+#define fileno(x) __sfileno(x)
+#include <unistd.h>
+#endif
 
 // Help the mingw bison/yacc pair when building with msvc from msys
 #ifndef HAVE_UNISTD_H

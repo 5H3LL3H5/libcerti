@@ -30,6 +30,9 @@
 #include <iostream>
 #ifndef _WIN32
 #include <unistd.h>
+#include <sys/select.h>
+#include <sys/time.h>
+#include <sys/types.h>
 #endif
 
 using std::string ;

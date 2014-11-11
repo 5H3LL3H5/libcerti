@@ -43,3 +43,10 @@ OPTION(CERTI_REALTIME_EXTENSIONS
 IF(CERTI_REALTIME_EXTENSIONS)
     ADD_DEFINITIONS(-DCERTI_REALTIME_EXTENSIONS)
 ENDIF(CERTI_REALTIME_EXTENSIONS)
+
+# default behaviour is to build library as shared on all platform
+OPTION(BUILD_SHARED
+             "Build libraries as shared library" ON)
+
+OPTION(USE_FULL_RPATH
+             "Use the full RPATH" OFF)

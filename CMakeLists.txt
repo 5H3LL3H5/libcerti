@@ -6,6 +6,15 @@ endif()
 
 project(CERTI CXX)
 
+message("CMAKE_SYSTEM_NAME == ${CMAKE_SYSTEM_NAME} !!!!")
+if(${CMAKE_SYSTEM_NAME} MATCHES ".*rtems.*")
+        SET(SPEC_FILE "bsp_specs")
+        SET(CPU "cypress")
+        add_definitions(-DRTEMS)
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -B${RTEMS_BASE_PATH}/${PATTERN}/${BSP}/lib/ -specs ${SPEC_FILE} -qrtems -mcpu=${CPU}")
+endif()
+
+
 include(${CMAKE_ROOT}/Modules/Dart.cmake)
 MARK_AS_ADVANCED(TCL_TCLSH DART_ROOT)
 # New Policy for full path library search
@@ -53,12 +62,7 @@ ELSE(BIG_ENDIAN)
    message(STATUS "Target is Little Endian")
 ENDIF(BIG_ENDIAN)
 
-# default behaviour is to build library as shared on all platform
-OPTION(BUILD_SHARED
-             "Build libraries as shared library" ON)
-
-OPTION(USE_FULL_RPATH
-             "Use the full RPATH" OFF)
+INCLUDE(Options.cmake)
 
 IF (USE_FULL_RPATH)
     # see http://www.cmake.org/Wiki/CMake_RPATH_handling#Always_full_RPATH
@@ -77,7 +81,6 @@ IF (USE_FULL_RPATH)
     SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 ENDIF(USE_FULL_RPATH)
 
-INCLUDE(Options.cmake)
 
 IF (NOT CMAKE_BUILD_TYPE)
    MESSAGE(STATUS "No build type selected, default to Debug")
@@ -131,9 +134,9 @@ ENDIF(CMAKE_COMPILER_IS_GNUCC)
 IF(CMAKE_COMPILER_IS_GNUCXX)
   # we may add -Wextra if we want gcc to _really_ scream
   set(CXXSTD "c++98")
-  if (CMAKE_SYSTEM MATCHES "SunOS")
+  if (CMAKE_SYSTEM MATCHES "SunOS" OR ${CMAKE_SYSTEM_NAME} MATCHES ".*rtems.*")
      set(CXXSTD "gnu++98")
-  endif(CMAKE_SYSTEM MATCHES "SunOS")
+  endif(CMAKE_SYSTEM MATCHES "SunOS" OR ${CMAKE_SYSTEM_NAME} MATCHES ".*rtems.*")
   # we need gnu++98 for long long and uint64 definition on some architecture
   # (e.g. Solaris 8 + gcc 3.4.x)
   SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=${CXXSTD} -Wall -Woverloaded-virtual -Wno-unused-function")

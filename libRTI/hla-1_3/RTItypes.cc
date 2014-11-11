@@ -26,6 +26,15 @@
 #include <cstdlib>
 #include <cstring>
 #include "RTI.hh"
+#ifdef __STRICT_ANSI__
+#undef __STRICT_ANSI__
+#define BACK_UP
+#endif
+
+#include <string.h>
+#ifdef BACK_UP
+#define __STRICT_ANSI__
+#endif
 
 // static members for HLA Exceptions
 const char *RTI::ArrayIndexOutOfBounds::_ex = "ArrayIndexOutOfBounds" ;

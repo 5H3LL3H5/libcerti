@@ -22,6 +22,7 @@
  *
  * Copyright (c) 2002 Yves DUFRENNE, Stephane GALLES, Eric NOULARD and Robert PAGNOT
  */
+#include <stdint.h>
 
 #ifdef LINUX
 #define _BSD_SOURCE
@@ -30,11 +31,19 @@
 #include <linux/if.h>
 #endif
 
+#ifdef RTEMS
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include <netinet/in.h>
+#endif
+
 #include <stdio.h>
 #include <netdb.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <rpc/rpc.h>
+/*#include <rpc/rpc.h>*/
 
 /* Add missing declaration on MacOS rpclib 
  * which generate a spurious warning

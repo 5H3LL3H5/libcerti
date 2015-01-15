@@ -62,13 +62,13 @@ ELSE(X_DISPLAY_MISSING)
     ARCHIVE DESTINATION lib)  
 ENDIF(X_DISPLAY_MISSING)
 
-ADD_EXECUTABLE(billard-nogui ${billard_SRCS})
-set_target_properties(billard-nogui PROPERTIES COMPILE_FLAGS "-DX_DISPLAY_MISSING=1")
-TARGET_LINK_LIBRARIES(billard-nogui graph-nogui RTI FedTime)
-INSTALL(TARGETS billard-nogui
-    RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib)  
+#ADD_EXECUTABLE(billard-nogui ${billard_SRCS})
+#set_target_properties(billard-nogui PROPERTIES COMPILE_FLAGS "-DX_DISPLAY_MISSING=1")
+#TARGET_LINK_LIBRARIES(billard-nogui graph-nogui RTI FedTime)
+#INSTALL(TARGETS billard-nogui
+#    RUNTIME DESTINATION bin
+#    LIBRARY DESTINATION lib
+#    ARCHIVE DESTINATION lib)  
     
 ########### install files ###############
 INSTALL(FILES  

@@ -89,10 +89,10 @@ main(int argc, char **argv)
 
     try {
 	// Handlers
-	signal(SIGINT, WaitForEnd_Unx);
+	/*signal(SIGINT, WaitForEnd_Unx);
 	#ifndef _WIN32
 		signal(SIGALRM, WaitForEnd_Unx);
-	#endif
+	#endif*/
 	std::set_terminate(TerminateHandler);
 	std::set_unexpected(ExceptionHandler);
 
@@ -160,7 +160,7 @@ main(int argc, char **argv)
 	#ifdef _WIN32
 		CreateThread(NULL,0,(LPTHREAD_START_ROUTINE)WaitForEnd_Win,&timer,0,NULL);	
 	#else
-		struct sigaction a ;
+		/*struct sigaction a ;
 		a.sa_handler = WaitForEnd_Unx ;
 		sigemptyset(&a.sa_mask);
 		a.sa_flags   = SA_RESTART;
@@ -170,7 +170,7 @@ main(int argc, char **argv)
 		if (timer != 0) {
 			 printf("Timer ... : %5d\n", timer);
 			 alarm(timer);
-		}
+		}*/
 	#endif
 
 	// Create object

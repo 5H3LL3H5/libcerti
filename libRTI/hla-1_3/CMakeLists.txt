@@ -10,7 +10,7 @@ set(RTI_LIB_SRCS
     RTItypesImp.cc
     RTItypesImp.hh
    )
-
+   
 set(RTI_LIB_INCLUDEENDIF
     ${CMAKE_SOURCE_DIR}/include/hla-1_3/baseTypes.hh
     ${CMAKE_SOURCE_DIR}/include/certi.hh

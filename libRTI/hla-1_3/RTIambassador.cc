@@ -163,6 +163,42 @@ assignPHVPSToRequest(const std::vector<std::pair<RTI::ParameterHandle, Parameter
   This process connects to rtia after one second delay (UNIX socket).
  */
 
+#ifdef RTEMS
+RTI::RTIambassador::RTIambassador()
+throw (RTI::MemoryExhausted, RTI::RTIinternalError)
+{
+	G.Out(pdGendoc,"enter RTIambassador::RTIambassador");
+	PrettyDebug::setFederateName( "LibRTI::UnjoinedFederate" );
+	std::stringstream msg;
+
+	privateRefs = new RTIambPrivateRefs();
+
+	privateRefs->socketUn = new SocketUN(stIgnoreSignal);
+
+	privateRefs->is_reentrant = false ;
+
+
+	int port = privateRefs->socketUn->listenUN();
+	if (port == -1) {
+		D.Out( pdError, "Cannot listen to RTIA connection. Abort." );
+		throw RTI::RTIinternalError( "Cannot listen to RTIA connection" );
+	}
+
+
+	if (privateRefs->socketUn->acceptUN(10*1000) == -1) {
+		throw RTI::RTIinternalError( "Cannot connect to RTIA" );
+	}
+
+	M_Open_Connexion req, rep ;
+	req.setVersionMajor(CERTI_Message::versionMajor);
+	req.setVersionMinor(CERTI_Message::versionMinor);
+
+	G.Out(pdGendoc,"        ====>executeService OPEN_CONNEXION");
+	privateRefs->executeService(&req, &rep);
+
+	G.Out(pdGendoc,"exit  RTIambassador::RTIambassador");
+}
+#else
 RTI::RTIambassador::RTIambassador()
 throw (RTI::MemoryExhausted, RTI::RTIinternalError)
 {
@@ -349,6 +385,7 @@ throw (RTI::MemoryExhausted, RTI::RTIinternalError)
 	G.Out(pdGendoc,"exit  RTIambassador::RTIambassador");
 }
 
+#endif
 // ----------------------------------------------------------------------------
 //! Closes processes.
 /*! When destructor is called, kill rtia process.

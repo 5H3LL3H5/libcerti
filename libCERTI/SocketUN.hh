@@ -60,6 +60,8 @@ public:
 
 	int listenUN();
 	int connectUN(int port);
+	int connectUN(const std::string ip,int port);
+	
 	int acceptUN(unsigned msec);
 
 	SOCKET socketpair();

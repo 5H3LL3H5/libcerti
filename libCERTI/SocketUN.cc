@@ -29,6 +29,7 @@
 #include <string>
 #include <iostream>
 #ifndef _WIN32
+#include <arpa/inet.h>
 #include <unistd.h>
 #include <sys/select.h>
 #include <sys/time.h>
@@ -116,7 +117,24 @@ SocketUN::connectUN(int port)
 
   return 0;
 }
+int
+SocketUN::connectUN(const std::string ip,int port)
+{
+  if ((_socket_un = socket(AF_INET, SOCK_STREAM, 0)) == -1)
+    return -1;
+  pD->Out(pdInit, "Client: Created IPV4 socket.");
 
+  struct sockaddr_in addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.sin_family = AF_INET;
+  inet_pton(AF_INET,ip.c_str(),&(addr.sin_addr.s_addr));
+  addr.sin_port = htons(port);
+  if (connect(_socket_un, (const struct sockaddr*) &addr, sizeof(addr)) == -1)
+    return -1;
+  pD->Out(pdInit, "Client: Connected to IPV4 address at port %d.", port);
+
+  return 0;
+}
 // ----------------------------------------------------------------------------
 //! Called by server to open the socket and wait for the connection.
 int

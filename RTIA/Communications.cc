@@ -111,8 +111,22 @@ Communications::Communications(int RTIA_port, int RTIA_fd)
     if (0 <= RTIA_fd) {
       socketUN->setSocketFD(RTIA_fd);
     } else if (0 <= RTIA_port) {
-      if (socketUN->connectUN(RTIA_port) == -1)
-        exit(EXIT_FAILURE);
+ 
+      //if the env variable CERTI_DEPORTED_FED_IP is set, then we assume
+      //this PARTICULAR instance of rtia for a deported federate whose IP
+      //is given in the var. Otherwise, just connect to localhost.
+      const char* env = getenv("CERTI_DEPORTED_FED_IP");
+      if (env && strlen(env)){
+        if (socketUN->connectUN(std::string(env),RTIA_port) == -1){
+                exit(EXIT_FAILURE);
+        } 
+      }else{
+        if (socketUN->connectUN(RTIA_port) == -1){
+                exit(EXIT_FAILURE);
+        } 
+      }
+
+
     } else {
       exit(EXIT_FAILURE);
     }
